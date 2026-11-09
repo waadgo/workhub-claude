@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "owner": {
+    "name": "Alex",
+    "time_zone": "Europe/Lisbon"
+  },
+  "system_name": {
+    "override_env": "CC_CLUSTER",
+    "aliases": {}
+  },
+  "notion": {
+    "hub_parent_page_url": "https://www.notion.so/My-workspace-page-0123456789abcdef0123456789abcdef",
+    "hub_page_url": "",
+    "tasks_database_url": "",
+    "tasks_data_source": "",
+    "views": {
+      "now": "",
+      "focus": ""
+    },
+    "task_id_prefix": "TK",
+    "projects": [
+      "Thesis chapter 1",
+      "Dataset cleaning",
+      "Writing and meetings",
+      "Miscellaneous"
+    ],
+    "research_log": {
+      "enabled": true,
+      "parent_page_url": "",
+      "data_source": ""
+    },
+    "conversation_reports": {
+      "enabled": false,
+      "parent_page_url": "",
+      "data_source": ""
+    }
+  },
+  "workflow": {
+    "conversation_names": true,
+    "orchestrator": {
+      "enabled": true,
+      "folder": "~/workhub/orchestrator"
+    },
+    "morning_brief": {
+      "enabled": true,
+      "days": "Mon-Fri",
+      "time": "07:40",
+      "scheduler": "claude-app"
+    },
+    "now_limits": {
+      "max_rows": 7,
+      "max_in_progress": 3
+    },
+    "max_active_conversations": 4,
+    "session_records_subdir": "docs/sessions"
+  },
+  "machines": {
+    "workstations": [
+      {
+        "name": "ws01",
+        "ssh_alias": "",
+        "shares_home_with_this_machine": true,
+        "cpus": 32,
+        "ram_gb": 128,
+        "gpus": [
+          {
+            "model": "RTX 4090",
+            "memory_gb": 24,
+            "count": 1
+          }
+        ],
+        "usage_windows": [],
+        "notes": "my own workstation"
+      },
+      {
+        "name": "ws02",
+        "ssh_alias": "ws02",
+        "shares_home_with_this_machine": true,
+        "cpus": 24,
+        "ram_gb": 64,
+        "gpus": [
+          {
+            "model": "RTX 3060",
+            "memory_gb": 12,
+            "count": 1
+          }
+        ],
+        "usage_windows": [
+          {
+            "days": "Mon-Fri",
+            "from": "09:00",
+            "to": "17:00",
+            "rule": "blocked",
+            "reason": "shared with other lab members during the day"
+          }
+        ],
+        "notes": ""
+      }
+    ],
+    "clusters": [
+      {
+        "name": "rorqual",
+        "ssh_alias": "rorqual",
+        "hostname": "rorqual.alliancecan.ca",
+        "user": "alex",
+        "scheduler": "slurm",
+        "slurm_accounts": [
+          "def-pi_cpu",
+          "def-pi_gpu"
+        ],
+        "shares_home_with_this_machine": false
+      }
+    ],
+    "cluster_hops": []
+  },
+  "cluster_login": {
+    "enabled": true,
+    "install_dir": "~/.local/bin",
+    "socket_dir": "/tmp/user/1000",
+    "duo_hint": "answer Duo (type 1 for a push to your phone)"
+  },
+  "conversations": {
+    "claude_projects_dir": "~/.claude/projects",
+    "include_codex": false,
+    "codex_sessions_dir": "~/.codex/sessions"
+  },
+  "paths": {
+    "state_dir": "~/.local/state/workhub-claude",
+    "outputs_dir": "~/workhub/outputs"
+  },
+  "runtime": {
+    "python": "python3"
+  },
+  "skill_settings": {}
+}

@@ -1,0 +1,34 @@
+{
+ "description": "EXAMPLE project labels for slurm_week.py (weekly-recap). Copy this file outside the skill folder (for example to ~/.config/workhub-claude/weekly-recap_project_rules.json), replace the rules with your own, and put its path in the settings file under skill_settings.weekly-recap.project_rules_file. Without that setting no rules are used: jobs linked to a Work Hub row are grouped by the row's Project, and jobs with no row get the label 'other: <job-name prefix>'. How the rules work: each job's name and working folder are joined, lower-cased and searched for each rule's patterns (plain substrings, not regular expressions). The FIRST rule with a matching pattern gives the label, so put specific rules before general ones. Use labels that match your Work Hub Project options where one fits.",
+ "rules": [
+  {
+   "label": "Project A",
+   "patterns": [
+    "proja_",
+    "/project_a/"
+   ]
+  },
+  {
+   "label": "Project B",
+   "patterns": [
+    "projb_",
+    "/project_b/"
+   ]
+  },
+  {
+   "label": "Storage and backups",
+   "patterns": [
+    "backup",
+    "rsync",
+    "tar_"
+   ]
+  },
+  {
+   "label": "Interactive sessions",
+   "patterns": [
+    "interactive",
+    "salloc"
+   ]
+  }
+ ]
+}

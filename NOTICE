@@ -1,0 +1,12 @@
+Notion Work Hub with Claude (workhub-claude)
+Copyright 2026 Walter Adame-Gonzalez
+
+This product includes software and documentation developed by Walter Adame-Gonzalez
+(https://github.com/waadgo/workhub-claude).
+
+The code and skill instructions are licensed under the Apache License, Version 2.0 (see LICENSE).
+The Notion Work Hub template (page layout, database schema, formulas, views and page texts) is
+licensed under Creative Commons Attribution 4.0 International (see LICENSE-TEMPLATE.md).
+
+If you redistribute this work or a derivative of it, keep this NOTICE file, and keep the credit
+line at the top of the Notion template page ("Work Hub template by Walter Adame-Gonzalez").

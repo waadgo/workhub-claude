@@ -1,0 +1,13 @@
+{
+  "name": "workhub-claude",
+  "version": "1.0.0",
+  "description": "Notion Work Hub with Claude: skills that run a Notion task hub (Inbox, Tasks with Score and dependencies, topic cards, Done reports) together with your Claude Code conversations, workstations and computing clusters. Start with: \"set up my work hub\".",
+  "author": {
+    "name": "Walter Adame-Gonzalez",
+    "url": "https://github.com/waadgo"
+  },
+  "homepage": "https://github.com/waadgo/workhub-claude",
+  "repository": "https://github.com/waadgo/workhub-claude",
+  "license": "Apache-2.0",
+  "keywords": ["notion", "tasks", "work-hub", "research", "slurm", "hpc", "productivity"]
+}

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "owner": {
+    "name": "Alex",
+    "time_zone": "America/New_York"
+  },
+  "paths": {
+    "state_dir": "~/.local/state/workhub-claude",
+    "outputs_dir": "~/workhub/outputs"
+  },
+  "runtime": {
+    "python": "python3"
+  },
+  "workflow": {
+    "orchestrator": {
+      "enabled": false,
+      "folder": "~/workhub/orchestrator"
+    }
+  },
+  "machines": {
+    "workstations": [
+      {
+        "name": "ws01",
+        "ssh_alias": "",
+        "shares_home_with_this_machine": true,
+        "cpus": 32,
+        "ram_gb": 128,
+        "gpus": [{"model": "RTX 4090", "memory_gb": 24, "count": 1}],
+        "usage_windows": [],
+        "notes": "my own workstation: any time"
+      },
+      {
+        "name": "ws02",
+        "ssh_alias": "ws02",
+        "shares_home_with_this_machine": true,
+        "cpus": 24,
+        "ram_gb": 64,
+        "gpus": [{"model": "RTX 3060", "memory_gb": 12, "count": 1}],
+        "usage_windows": [
+          {"days": "Mon-Fri", "from": "09:00", "to": "17:00", "rule": "blocked",
+           "reason": "shared with other lab members during the day"}
+        ],
+        "notes": ""
+      }
+    ],
+    "clusters": [
+      {
+        "name": "mycluster",
+        "ssh_alias": "mycluster",
+        "hostname": "login.mycluster.example.org",
+        "user": "alex",
+        "scheduler": "slurm",
+        "slurm_accounts": ["def-example_cpu", "def-example_gpu"],
+        "shares_home_with_this_machine": false
+      }
+    ]
+  },
+  "skill_settings": {
+    "compute-planner": {
+      "planner_dir": "~/workhub/outputs/compute-planner",
+      "horizon_days": 7,
+      "ram_heavy_gb": 60,
+      "shared_machines": ["ws02"],
+      "shared_cpu_percent": 30,
+      "cluster_budgets": {
+        "mycluster": {"unit": "gpu-hours", "allocated": 1250, "applies_to": ["h100_80gb"],
+                      "account": "def-example_gpu"}
+      },
+      "prefer_cluster_for_cpu": "mycluster"
+    }
+  }
+}

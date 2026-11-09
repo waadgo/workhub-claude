@@ -1,0 +1,8 @@
+# Python caches and test caches
+__pycache__/
+*.pyc
+.pytest_cache/
+# Backups made by the installers and the setup skill
+*.bak-*
+# A personal settings file must never be committed (it lives in ~/.config/workhub-claude/)
+config.json

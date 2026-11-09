@@ -1,0 +1,310 @@
+#!/usr/bin/env bash
+# =====================================================================================================================
+# cluster-login: log in once to your clusters (SSH key + one second-factor approval each, for example Duo) and keep
+# each connection open, so that every later ssh/scp/rsync to those clusters from this machine, yours or Claude's,
+# needs no second factor until the connection breaks or you log out.
+#
+# WHY
+#   Many clusters ask for a second factor (Duo push, code) at every new SSH login. Claude cannot answer it, and a
+#   script that opens many connections would ask many times. OpenSSH can share ONE logged-in connection: the first
+#   login becomes a "master" that keeps running in the background and listens on a socket file; later ssh, scp and
+#   rsync calls to the same host go through that socket and need no new login (ssh_config options ControlMaster,
+#   ControlPath, ControlPersist). This tool opens those masters in your terminal (where you can answer the prompt),
+#   reports which ones are up, and closes them. The ssh settings themselves are written to ~/.ssh/config by
+#   install_cluster_login.sh (workhub-claude kit), between the markers
+#   "# >>> workhub-claude cluster-login >>>" and "# <<< workhub-claude cluster-login <<<".
+#
+# USAGE
+#   cluster-login                  log in to every listed cluster (skips the ones already connected)
+#   cluster-login status           which connections are up, and for how long
+#   cluster-login logout           close the connections
+#   cluster-login status mycluster any command can be limited to some clusters (their ssh aliases)
+#   cluster-login mycluster        log in to these clusters only
+#   cluster-login --help           this text
+#
+# WHICH CLUSTERS (the first source that gives a list wins)
+#   1. the cluster aliases given as arguments (works without any settings file);
+#   2. the workhub-claude settings file (${WORKHUB_CLAUDE_CONFIG:-~/.config/workhub-claude/config.json}):
+#      the ssh_alias of every entry of machines.clusters, when cluster_login.enabled is true;
+#   3. the "# aliases:" line of the installer's block in ~/.ssh/config (written by install_cluster_login.sh).
+#   The prompt banner text comes from cluster_login.duo_hint in the settings, when set.
+#
+# ENVIRONMENT
+#   WORKHUB_CLAUDE_CONFIG     another settings file (optional).
+#   CLUSTER_LOGIN_SSH_CONFIG  another ssh configuration file, passed to every ssh call as -F (optional; tests use it).
+#
+# NOTES
+#   - A connection belongs to the machine it was opened on: log in again on each machine you use.
+#   - Inside Claude Code (variable CLAUDECODE set) "login" is refused: Claude cannot answer the second factor, and the
+#     installer's ssh settings make ssh fail at once there instead of prompting. "status" and "logout" work.
+#   - Exit status: status 0 = all connected, 1 = some not; login 0 = all connected, 1 = some failed or skipped,
+#     2 = no terminal, inside Claude Code, or no cluster list; logout 0.
+#
+# DEPENDENCIES
+#   bash, OpenSSH (ssh), and python3 only to read the settings file. Optional: timeout (GNU coreutils) or gtimeout,
+#   so a stuck connection cannot hang "status" (without either, the check runs without a time limit).
+#
+# LICENSE
+#   Apache-2.0. Part of workhub-claude by Walter Adame-Gonzalez (https://github.com/waadgo/workhub-claude).
+# =====================================================================================================================
+
+# `set -u`: using a variable that was never set is an error (catches typing mistakes). `-e` is NOT set on purpose:
+# the checks below run commands that are expected to fail (for example "is there a connection?").
+set -u
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Fixed values
+# ---------------------------------------------------------------------------------------------------------------------
+# The markers of the installer's block in ~/.ssh/config (must match install_cluster_login.py).
+BLOCK_START='# >>> workhub-claude cluster-login >>>'
+BLOCK_END='# <<< workhub-claude cluster-login <<<'
+# The banner shown before each login when the settings give no cluster_login.duo_hint.
+DEFAULT_HINT='answer the login prompts (second factor, for example Duo: type 1 for a push to your phone)'
+# Seconds a "does the open connection still answer?" check may take before the connection counts as stuck.
+ANSWER_TIMEOUT=20
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Help text
+# ---------------------------------------------------------------------------------------------------------------------
+show_help() {
+  # A "here document" (<<'EOF' ... EOF) prints the lines between the markers as they are; the quotes around EOF stop
+  # the shell from expanding $ or backquotes inside.
+  cat <<'EOF'
+cluster-login: log in once to your clusters and keep the connections open.
+
+  cluster-login                  log in to every listed cluster (skips the ones already connected)
+  cluster-login status           which connections are up, and for how long
+  cluster-login logout           close the connections
+  cluster-login status mycluster any command can be limited to some clusters (their ssh aliases)
+
+Clusters: the arguments; else machines.clusters[].ssh_alias of the workhub-claude settings
+(when cluster_login.enabled is true); else the aliases of the installer's block in ~/.ssh/config.
+A connection belongs to the machine it was opened on: log in again on each machine you use.
+EOF
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# 1. The action (first argument) and the clusters given as arguments
+# ---------------------------------------------------------------------------------------------------------------------
+action=login
+# `case` compares "${1:-}" (the first argument, or "" when there is none) with each pattern; `|` separates
+# alternatives. `shift` drops the first argument, so "$@" then holds only the cluster names.
+case "${1:-}" in
+  login | status | logout) action=$1; shift ;;
+  -h | --help | help) show_help; exit 0 ;;
+esac
+
+# Every ssh call gets "-F <file>" when CLUSTER_LOGIN_SSH_CONFIG is set. SSH_OPTS is a bash array (a list of words
+# kept apart even when they contain spaces).
+SSH_OPTS=()
+if [ -n "${CLUSTER_LOGIN_SSH_CONFIG:-}" ]; then SSH_OPTS=(-F "$CLUSTER_LOGIN_SSH_CONFIG"); fi
+# The ssh configuration file read for the fallback list (point 3 of the header).
+SSH_CONFIG_FILE=${CLUSTER_LOGIN_SSH_CONFIG:-$HOME/.ssh/config}
+
+# ssh with the options above. `${SSH_OPTS[@]+"${SSH_OPTS[@]}"}` expands to the array's words when the array has any,
+# and to nothing otherwise; the plain "${SSH_OPTS[@]}" would be an error for an empty array under `set -u` in older
+# bash versions (macOS ships bash 3.2).
+run_ssh() {
+  ssh ${SSH_OPTS[@]+"${SSH_OPTS[@]}"} "$@"
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# 2. The cluster list when no arguments were given (settings file, then the installer's ssh block)
+# ---------------------------------------------------------------------------------------------------------------------
+login_hint=$DEFAULT_HINT
+settings_note=''
+clusters=()
+
+# read_settings: print three kinds of lines from the settings file: "enabled" or "disabled", then the duo_hint (may be
+# empty), then one ssh alias per line. Python is used because bash cannot parse JSON safely. The program is given on
+# standard input (`python3 - FILE <<'EOF'`: "-" = read the program from standard input; FILE becomes sys.argv[1]).
+# Exit status 3 = the file is missing or is not valid JSON.
+read_settings() {
+  python3 - "$1" <<'EOF'
+import json, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as handle:
+        settings = json.load(handle)
+except (OSError, ValueError):
+    sys.exit(3)
+login = settings.get("cluster_login") or {}
+print("enabled" if login.get("enabled") is True else "disabled")
+print(str(login.get("duo_hint") or "").replace("\n", " "))
+for cluster in (settings.get("machines") or {}).get("clusters") or []:
+    if isinstance(cluster, dict) and cluster.get("ssh_alias"):
+        print(str(cluster["ssh_alias"]).strip())
+EOF
+}
+
+settings_file=${WORKHUB_CLAUDE_CONFIG:-$HOME/.config/workhub-claude/config.json}
+if [ -f "$settings_file" ] && command -v python3 >/dev/null 2>&1; then
+  # `if output=$(command)` runs the command, stores what it prints, and tests its exit status.
+  if settings_lines=$(read_settings "$settings_file"); then
+    line_number=0
+    # Read the printed lines one by one (`IFS=` keeps spaces, `-r` keeps backslashes as they are).
+    while IFS= read -r line; do
+      line_number=$((line_number + 1))
+      if [ "$line_number" -eq 1 ]; then
+        enabled=$line
+      elif [ "$line_number" -eq 2 ]; then
+        if [ -n "$line" ]; then login_hint=$line; fi
+      elif [ "$enabled" = enabled ] && [ -n "$line" ]; then
+        clusters+=("$line")
+      fi
+    done <<<"$settings_lines"
+    if [ "${enabled:-disabled}" != enabled ]; then
+      settings_note="cluster_login.enabled is not true in $settings_file"
+    fi
+  fi
+fi
+
+# The installer's block in the ssh configuration, used only when the settings gave no list (and did not switch the
+# tool off). First `sed -n '/A/,/B/p'` prints the lines from the start marker to the end marker; the second `sed`
+# keeps the text after "# aliases: " on the line that starts with it.
+if [ ${#clusters[@]} -eq 0 ] && [ -z "$settings_note" ] && [ -f "$SSH_CONFIG_FILE" ]; then
+  alias_line=$(sed -n "/^${BLOCK_START}\$/,/^${BLOCK_END}\$/p" "$SSH_CONFIG_FILE" | sed -n 's/^# aliases: //p' | head -n 1)
+  # `read -r -a NAME` splits the line at spaces into the array NAME.
+  if [ -n "$alias_line" ]; then read -r -a clusters <<<"$alias_line"; fi
+fi
+
+# Arguments win over everything above.
+if [ $# -gt 0 ]; then clusters=("$@"); fi
+
+if [ ${#clusters[@]} -eq 0 ]; then
+  echo "cluster-login: no clusters to work on." >&2
+  if [ -n "$settings_note" ]; then echo "  ($settings_note)" >&2; fi
+  echo "  Give their ssh aliases as arguments (cluster-login status mycluster), or install the ssh settings" >&2
+  echo "  with install_cluster_login.sh from the workhub-claude kit." >&2
+  exit 2
+fi
+
+# An alias must be a plain name: letters, digits, dot, underscore, hyphen, not starting with "-" (ssh would read a
+# leading "-" as an option). The regular expression: ^ start, [A-Za-z0-9._-]+ one or more allowed characters, $ end.
+for c in "${clusters[@]}"; do
+  if ! [[ "$c" =~ ^[A-Za-z0-9._-]+$ ]] || [ "${c:0:1}" = "-" ]; then
+    echo "cluster-login: not a valid ssh alias: '$c'" >&2
+    exit 2
+  fi
+done
+
+# ---------------------------------------------------------------------------------------------------------------------
+# 3. Small helpers
+# ---------------------------------------------------------------------------------------------------------------------
+
+# conn_pid ALIAS: print the process ID of the open connection to ALIAS (nothing if there is none).
+# `ssh -O check` asks the master through its socket; it answers "Master running (pid=12345)" on standard error, so
+# 2>&1 sends that to the pipe. The sed expression keeps only the digits between "pid=" and ")".
+conn_pid() {
+  run_ssh -O check "$1" 2>&1 | sed -n 's/^Master running (pid=\([0-9]*\)).*/\1/p'
+}
+
+# with_timeout SECONDS COMMAND...: run COMMAND with a time limit when a timeout tool exists, else without one.
+with_timeout() {
+  local seconds=$1
+  shift
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$seconds" "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then
+    gtimeout "$seconds" "$@"
+  else
+    "$@"
+  fi
+}
+
+# answers ALIAS: true if the open connection to ALIAS really answers within ANSWER_TIMEOUT seconds.
+# A master can stay "running" after the network dropped (laptop sleep, VPN change): it is open but stuck. Running the
+# command `true` on the cluster through it shows whether it still works. BatchMode=yes: never prompt here.
+answers() {
+  with_timeout "$ANSWER_TIMEOUT" ssh ${SSH_OPTS[@]+"${SSH_OPTS[@]}"} -o BatchMode=yes "$1" true </dev/null >/dev/null 2>&1
+}
+
+# duration SECONDS: print "2d 03h 15m".
+duration() {
+  printf '%dd %02dh %02dm' $(($1 / 86400)) $(($1 % 86400 / 3600)) $(($1 % 3600 / 60))
+}
+
+# since_text PID: print how long the process has run and since when, e.g. "2d 03h 15m (since 2026-11-04 09:10)";
+# just "pid N" where ps or date do not offer these fields (ps -o etimes / date -d are Linux forms).
+since_text() {
+  local elapsed started
+  elapsed=$(ps -o etimes= -p "$1" 2>/dev/null | tr -d ' ')
+  started=$(date -d "$(ps -o lstart= -p "$1" 2>/dev/null)" '+%Y-%m-%d %H:%M' 2>/dev/null)
+  if [ -n "$elapsed" ] && [ -n "$started" ]; then
+    printf 'for %s (since %s)' "$(duration "$elapsed")" "$started"
+  else
+    printf '(pid %s)' "$1"
+  fi
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# 4. The three actions
+# ---------------------------------------------------------------------------------------------------------------------
+
+do_status() {
+  local c pid rc=0
+  for c in "${clusters[@]}"; do
+    pid=$(conn_pid "$c")
+    if [ -z "$pid" ]; then
+      printf '%-10s not connected\n' "$c"; rc=1
+    elif answers "$c"; then
+      printf '%-10s connected %s\n' "$c" "$(since_text "$pid")"
+    else
+      printf '%-10s stuck (open but not answering): run cluster-login\n' "$c"; rc=1
+    fi
+  done
+  return $rc
+}
+
+do_login() {
+  # Claude Code sets CLAUDECODE for the commands it runs; Claude cannot answer a second-factor prompt.
+  if [ -n "${CLAUDECODE:-}" ]; then
+    echo "cluster-login: run this in your own terminal, not from inside Claude Code (the second factor needs you)." >&2
+    return 2
+  fi
+  # `{ : </dev/tty; } 2>/dev/null` tries to open the terminal for reading; it fails when there is none (a job, a
+  # pipe without terminal), and then nobody could answer the prompt.
+  if ! { : </dev/tty; } 2>/dev/null; then
+    echo "cluster-login: run this in a terminal, the second factor needs your answer." >&2
+    return 2
+  fi
+  local c rc=0
+  for c in "${clusters[@]}"; do
+    # `ssh -G ALIAS` prints the settings ssh would use for ALIAS, one "name value" per line, without connecting;
+    # `grep -qx` is true when one whole line is exactly "controlmaster auto". Without that line a login here would
+    # not be shared (the installer's settings are missing, or the socket folder does not exist on this machine).
+    if ! run_ssh -G "$c" 2>/dev/null | grep -qx 'controlmaster auto'; then
+      printf '%-10s skipped: no shared-connection settings for it on this machine\n' "$c"
+      rc=1; continue
+    fi
+    if [ -n "$(conn_pid "$c")" ]; then
+      if answers "$c"; then printf '%-10s already connected\n' "$c"; continue; fi
+      # Stuck: close it, then log in again.
+      run_ssh -O exit "$c" 2>/dev/null
+    fi
+    printf '\n== %s: %s ==\n' "$c" "$login_hint"
+    # -o BatchMode=no: prompts allowed (you answer them); -f: go to the background after the login; -N: run no
+    # remote command (the connection only serves as the shared master).
+    if run_ssh -o BatchMode=no -fN "$c" && [ -n "$(conn_pid "$c")" ]; then
+      printf '%-10s connected\n' "$c"
+    else
+      printf '%-10s FAILED\n' "$c"; rc=1
+    fi
+  done
+  return $rc
+}
+
+do_logout() {
+  local c
+  for c in "${clusters[@]}"; do
+    if [ -n "$(conn_pid "$c")" ]; then
+      # `ssh -O exit` tells the master to close the connection and remove its socket.
+      run_ssh -O exit "$c" 2>/dev/null
+      printf '%-10s logged out\n' "$c"
+    else
+      printf '%-10s was not connected\n' "$c"
+    fi
+  done
+}
+
+# Run the chosen action ("do_login", "do_status" or "do_logout"); its return value becomes the exit status.
+"do_$action"

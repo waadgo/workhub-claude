@@ -1,0 +1,75 @@
+{
+  "schema": "run-status/1",
+  "title": "Example: Project A, two image classifiers, 5-fold cross-validation",
+  "subtitle": "Made-up runs and numbers that show every part of the figure · training on a Slurm cluster (mycluster), evaluation on a workstation (ws01)",
+  "timezone": "WET",
+  "generated": "2026-01-15T14:00:00",
+  "environment": {
+    "system": "mycluster", "cluster": "Mycluster", "user": "alex", "gpu": "H100 (79.6 GB)",
+    "working_dirs": [
+      {"path": "mycluster:/home/alex/projects/demo", "role": "code and configs"},
+      {"path": "mycluster:/scratch/alex/demo_runs", "role": "checkpoints and logs"},
+      {"path": "ws01:/home/alex/projects/demo/results", "role": "copies of the results"}
+    ],
+    "sessions": [
+      {"kind": "slurm", "name": "1001 cnn_fold3", "state": "running", "role": "1:25:00 of 6:00:00"},
+      {"kind": "slurm", "name": "1002 resnet_fold1", "state": "running", "role": "0:55:00 of 8:00:00"},
+      {"kind": "slurm", "name": "1003 resnet_fold2", "state": "pending", "role": "expected start 2026-01-15T19:40:00 (Slurm's guess)"},
+      {"kind": "tmux", "name": "demo_watch", "state": "idle", "role": "submits the next fold when one ends"}
+    ]
+  },
+  "models": [
+    {"name": "Small CNN", "params": "1.2 M parameters", "lines": ["4 convolution blocks, 128 × 128 inputs", "Best epoch: validation accuracy"]},
+    {"name": "ResNet-18", "params": "11 M parameters", "lines": ["ImageNet weights, fine-tuned", "Best epoch: validation accuracy"]},
+    {"name": "ws01 · RTX 4090", "params": "workstation", "lines": ["Test-set evaluation of both models"]}
+  ],
+  "stages": [
+    {"name": "Preprocessing", "model": "Small CNN", "session": "Slurm array", "gpu_time": false, "runs": [
+      {"name": "prep", "label": "resize + split", "status": "done", "start": "2026-01-14T18:00:00", "end": "2026-01-14T21:30:00"}
+    ]},
+    {"name": "Small CNN · 5 folds", "model": "Small CNN", "session": "Slurm", "runs": [
+      {"name": "cnn_fold0", "label": "fold 0", "status": "done", "start": "2026-01-15T04:40:00", "end": "2026-01-15T07:10:00"},
+      {"name": "cnn_fold1", "label": "fold 1", "status": "done", "start": "2026-01-15T07:15:00", "end": "2026-01-15T09:40:00"},
+      {"name": "cnn_fold2", "label": "fold 2", "status": "failed", "start": "2026-01-15T09:45:00", "end": "2026-01-15T10:05:00"},
+      {"name": "cnn_fold2b", "label": "fold 2 (retry)", "status": "done", "start": "2026-01-15T10:10:00", "end": "2026-01-15T12:30:00"},
+      {"name": "cnn_fold3", "label": "fold 3", "status": "running", "start": "2026-01-15T12:35:00", "estimate_end": "2026-01-15T15:05:00", "note": "epoch 41/120"},
+      {"name": "cnn_fold4", "label": "fold 4", "status": "queued", "estimate_start": "2026-01-15T15:10:00", "estimate_end": "2026-01-15T17:40:00"}
+    ]},
+    {"name": "ResNet-18 · 5 folds", "model": "ResNet-18", "session": "Slurm", "runs": [
+      {"name": "resnet_fold0", "label": "fold 0", "status": "done", "start": "2026-01-15T06:30:00", "end": "2026-01-15T13:00:00"},
+      {"name": "resnet_fold1", "label": "fold 1", "status": "running", "start": "2026-01-15T13:05:00", "estimate_end": "2026-01-15T19:35:00", "note": "epoch 12/100"},
+      {"name": "resnet_fold2", "label": "fold 2", "status": "queued", "estimate_start": "2026-01-15T19:40:00", "estimate_end": "2026-01-16T02:10:00"},
+      {"name": "resnet_fold3", "label": "fold 3", "status": "queued", "estimate_start": "2026-01-16T02:15:00", "estimate_end": "2026-01-16T08:45:00"},
+      {"name": "resnet_fold4", "label": "fold 4", "status": "queued", "estimate_start": "2026-01-16T08:50:00", "estimate_end": "2026-01-16T15:20:00"}
+    ]},
+    {"name": "Copy results to ws01", "model": "ws01 · RTX 4090", "session": "rsync", "gpu_time": false, "runs": [
+      {"name": "copy", "label": "checkpoints + logs", "status": "queued", "estimate_start": "2026-01-16T15:30:00", "estimate_end": "2026-01-16T16:10:00"}
+    ]},
+    {"name": "ws01 · test-set evaluation", "model": "ws01 · RTX 4090", "session": "tmux demo_eval", "runs": [
+      {"name": "eval", "label": "test set · both models (proposed)", "status": "queued", "proposed": true, "estimate_start": "2026-01-16T16:30:00", "estimate_end": "2026-01-16T20:30:00"}
+    ]}
+  ],
+  "milestones": [
+    {"date": "2026-01-14", "status": "done", "text": "Images resized and split into 5 folds by subject (no subject in two folds)"},
+    {"date": "2026-01-15", "status": "done", "text": "Small CNN folds 0-2 trained; fold 2 ran out of memory once and was rerun with batch size 16"},
+    {"date": "waiting", "status": "pending", "text": "The test-set evaluation waits for the last fold of both models"},
+    {"date": "to decide", "status": "blocked", "text": "Approve the proposed test-set run on ws01 (hatched bar)?"}
+  ],
+  "results": {
+    "title": "Results so far: validation accuracy per fold", "metric": "Accuracy",
+    "facets": [{"title": "Validation fold", "points": [
+      {"row": "fold 0", "series": "Small CNN", "value": 0.871}, {"row": "fold 1", "series": "Small CNN", "value": 0.858},
+      {"row": "fold 2", "series": "Small CNN", "value": 0.866}, {"row": "fold 0", "series": "ResNet-18", "value": 0.889}
+    ], "summaries": [{"text": "Small CNN mean 0.865 (3 folds); ResNet-18 0.889 (1 fold)"}]}]
+  },
+  "estimate_method": "mean duration of finished folds of the same model; folds of one model run one after the other",
+  "notes": ["Example file of the run-status-figure skill (assets/example_status.json): fictional machines, runs and numbers"],
+  "notion": {
+    "project": "Project A",
+    "project_key": "project-a",
+    "name": "Project A run status",
+    "source_key_prefix": "project-a:status",
+    "timezone_iana": "Europe/Lisbon",
+    "clusters": ["Mycluster", "ws01"]
+  }
+}

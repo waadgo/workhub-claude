@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use or adapt workhub-claude or its Notion Work Hub template, please cite it as below."
+title: "Notion Work Hub with Claude (workhub-claude)"
+abstract: "Claude Code skills, hooks and a Notion template that run a personal research task hub (Inbox, Tasks with Score and dependencies, topic cards, Done reports) together with the user's conversations, workstations and computing clusters."
+authors:
+  - family-names: "Adame-Gonzalez"
+    given-names: "Walter"
+type: software
+version: "1.0.0"
+date-released: "2026-11-09"
+license: Apache-2.0
+repository-code: "https://github.com/waadgo/workhub-claude"
+url: "https://github.com/waadgo/workhub-claude"
+keywords:
+  - notion
+  - claude-code
+  - task-management
+  - research-software
+  - hpc
+  - slurm

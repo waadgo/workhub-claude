@@ -1,0 +1,72 @@
+{
+ "schema": "run-status/1",
+ "title": "Example timeline Wed Oct 30: what is running and booked",
+ "subtitle": "Synthetic example of the compute-planner skill · solid = done · light = estimate · hatched = proposed",
+ "timezone": "EDT",
+ "generated": "2030-10-30T17:00:00",
+ "environment": {
+  "system": "ws01",
+  "cluster": "example",
+  "user": "example",
+  "gpu": "ws01 RTX 4090 · ws02 RTX 3060 · mycluster H100",
+  "working_dirs": [
+   {"path": "ws01:~/workhub/outputs/compute-planner", "role": "planner folder"}
+  ],
+  "sessions": [
+   {"kind": "tmux", "name": "scoring_gpu", "state": "running", "role": "image scoring, GPU"},
+   {"kind": "slurm", "name": "mycluster training", "state": "pending", "role": "start guess Thu 22:00"}
+  ]
+ },
+ "models": [
+  {"name": "ws01 · RTX 4090", "params": "any time", "lines": []},
+  {"name": "ws02 · RTX 3060", "params": "weeknights + weekends", "lines": []},
+  {"name": "mycluster", "params": "queue wait ≈ 36 h (GPU), 2 h (CPU)", "lines": []}
+ ],
+ "stages": [
+  {
+   "name": "image scoring (GPU)",
+   "model": "ws01 · RTX 4090",
+   "session": "tmux scoring_gpu",
+   "runs": [
+    {"name": "score_8_images", "label": "8 images", "status": "running",
+     "start": "2030-10-30T16:15:00", "estimate_end": "2030-10-30T20:45:00",
+     "uses": {"gpu": true, "gpu_memory_gb": 6, "ram_gb": 10, "threads": 4}}
+   ]
+  },
+  {
+   "name": "results copy (no GPU)",
+   "model": "ws01 · RTX 4090",
+   "gpu_time": false,
+   "runs": [
+    {"name": "copy_results_75gb", "label": "75 GB", "status": "queued",
+     "estimate_start": "2030-10-30T17:15:00", "estimate_end": "2030-10-30T17:55:00"}
+   ]
+  },
+  {
+   "name": "results copy (no GPU)",
+   "model": "ws02 · RTX 3060",
+   "gpu_time": false,
+   "runs": [
+    {"name": "copy_results_432gb", "label": "432 GB", "status": "queued",
+     "estimate_start": "2030-10-30T18:45:00", "estimate_end": "2030-10-30T21:15:00",
+     "uses": {"gpu": false, "ram_gb": 8, "threads": 2}}
+   ]
+  },
+  {
+   "name": "mycluster · Model A training",
+   "model": "mycluster",
+   "session": "slurm mycluster",
+   "runs": [
+    {"name": "mycluster_training", "label": "≈ 58 h → Sun morning", "status": "queued",
+     "estimate_start": "2030-10-31T22:00:00", "estimate_end": "2030-11-03T08:00:00"}
+   ]
+  }
+ ],
+ "milestones": [
+  {"date": "16:41", "status": "done", "text": "first pool ended, 0 failures"},
+  {"date": "Thu 22:00", "status": "pending", "text": "cluster training starts (Slurm guess)"}
+ ],
+ "estimate_method": "Synthetic example: durations invented for the compute-planner test.",
+ "notes": ["Clocks go back 1 h on Sun Nov 3 at 02:00."],
+ "window": {"past_hours": 12, "future_days": 7}
+}
