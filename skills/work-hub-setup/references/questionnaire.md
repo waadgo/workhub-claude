@@ -16,7 +16,8 @@ file as the answers and ask only what is missing or invalid.
 **B. Notion**
 - **B1** Build a new Work Hub, or use one you already have?
   - *new*: paste the link of the Notion page under which the hub should live (open the page → ⋯ → Copy link).
-  - *existing*: paste the link of your hub (for example your copy of the published template).
+  - *existing*: paste the link of your hub, for example your copy of the published template
+    (https://veiled-clementine-0d4.notion.site/Work-Hub-41371f09657181cfa7aaebd9631907bc → Duplicate).
 - **B2** (new hub only) Title of the hub page. [Work Hub]
 - **B3** Prefix of the Task IDs (row numbers such as TK-42), 1–6 capital letters, and a second choice in case the
   first is already used by another database in your workspace (Notion requires unique prefixes). [TK, then WH]

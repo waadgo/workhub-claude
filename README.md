@@ -10,7 +10,8 @@ By **Walter Adame-Gonzalez** · code: Apache-2.0 · Notion template: CC BY 4.0 �
 
 ## What you get
 
-**The Notion Work Hub** (built for you by the setup skill, or copied from the published template): an Inbox, and a
+**The Notion Work Hub** (built for you by the setup skill, or copied from the
+[published template](https://veiled-clementine-0d4.notion.site/Work-Hub-41371f09657181cfa7aaebd9631907bc) with "Duplicate"): an Inbox, and a
 Tasks database with automatic Task IDs (`TK-42`), Status, Priority, Effort, Project, due dates, dependencies
 (Blocked by / Blocks), an automatic **Score** (priority + deadline + what it unblocks, divided by effort) and
 **Ready?** check, and eight views: Now, Focus, By project, Board, Blocked, Needs your call, Ideas, Done.
@@ -69,7 +70,7 @@ GPUs, whether your home folder is shared with other machines), then asks **all**
 
 - **You:** first name (for notes), time zone.
 - **Notion:** the link of the Notion page under which the hub should live (or the link of a hub you already
-  copied from the template), the hub title, the Task ID prefix, your main projects, and whether you want a
+  copied from the [template](https://veiled-clementine-0d4.notion.site/Work-Hub-41371f09657181cfa7aaebd9631907bc)), the hub title, the Task ID prefix, your main projects, and whether you want a
   Research log and a Conversation reports database.
 - **How you work:** conversation names, the rules block in `~/.claude/CLAUDE.md`, an optional orchestrator
   conversation, the morning brief (days, time, how it is scheduled), limits for the Now view.

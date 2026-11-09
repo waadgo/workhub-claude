@@ -142,6 +142,7 @@ ALLOWED_MATCHES = {
     "00000000000000000000000000000000",
     "00000000-0000-0000-0000-000000000000",
     "01234567-89ab-cdef-0123-456789abcdef",
+    "41371f09657181cfa7aaebd9631907bc",  # the page id inside the public template link (published on purpose)
 }
 
 
