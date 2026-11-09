@@ -35,6 +35,23 @@ Tasks database with automatic Task IDs (`TK-42`), Status, Priority, Effort, Proj
 **`cluster-login`**: one shared SSH login per computing cluster. You answer the password or two-factor prompt
 once in your terminal; Claude can then read job queues through that login, and never types a password itself.
 
+## What it looks like
+
+Two of the figures the skills draw, made from the kit's fictional example files
+([how](docs/images/HOW_MADE.md)):
+
+**"status"** (run-status-figure): what is done, running and queued, with estimated end times, the folders and the
+tmux sessions or Slurm jobs behind it.
+
+![Example status figure: runs of two image classifiers on a cluster and a workstation](docs/images/run-status-figure_example.png)
+
+**"plan my compute for the week"** (compute-planner): free GPU and CPU hours filled with your pending tasks by
+rank; hatched bars are proposals, nothing starts until you say yes.
+
+![Example compute plan: proposed blocks on two workstations and a cluster over 7 days](docs/images/compute-planner_example.png)
+
+The Notion side: open the [published template](https://veiled-clementine-0d4.notion.site/Work-Hub-41371f09657181cfa7aaebd9631907bc).
+
 ## Requirements
 
 - [Claude Code](https://docs.claude.com/en/docs/claude-code) and a Notion account with the **Notion
