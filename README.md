@@ -1,5 +1,39 @@
 # Notion Work Hub with Claude (workhub-claude)
 
+A Notion task hub that Claude Code keeps up to date with your conversations, machines and cluster jobs.
+By **Walter Adame-Gonzalez** ([credit and license](#credit-and-license)).
+
+## Quick start
+
+About 10 minutes, once. You need [Claude Code](https://docs.claude.com/en/docs/claude-code) and a Notion account.
+
+1. **Get the hub:** open the [Notion template](https://veiled-clementine-0d4.notion.site/Work-Hub-41371f09657181cfa7aaebd9631907bc)
+   and click **Duplicate** (top right). You can also skip this: setup can build the hub for you.
+2. **Install the skills** in Claude Code:
+   ```
+   /plugin marketplace add waadgo/workhub-claude
+   /plugin install workhub-claude@workhub-claude
+   ```
+   (no plugins? see [Install](#install), option B). Then start a new Claude Code session.
+3. **Set up:** say **`set up my work hub`**. It checks your machine, asks all its questions in one message
+   (for Notion question B1 answer *existing* and paste the link of your copy), shows what it will do, and
+   waits for your **`go`**. If the Notion connector is missing, it tells you the one command to add it.
+
+**Every day**
+
+| You want to | Do or say |
+|---|---|
+| note a new to-do | one line in the hub's 📥 Inbox (or "add to Inbox: …") |
+| start working on a task | a new conversation: "new topic: …" or "continue WH-1" (the row's Task ID) |
+| see what runs and when it ends | "status" |
+| choose what to do next | "what should I work on?" |
+| stop for the day | "wrap up for today" |
+| Friday / Monday | "clean up my work hub" / "weekly recap", "plan my week" |
+
+Everything below is detail.
+
+## About
+
 A personal task system in Notion that Claude Code keeps up to date with your real work: your conversations,
 your workstations and your computing-cluster jobs. You jot to-dos in an Inbox; Claude files them, ranks them,
 names each conversation after its task, keeps a short "topic card" on every active task, and marks a task Done
